@@ -68,7 +68,7 @@ main:
 	li $s2, 10 # Load current platform length
 	
 	# Push intial level settings onto the stack
-	li $a0, 65
+	li $a0, 70
 	jal push_stack # Push the current speed onto the stack
 	li $a0, 0
 	jal push_stack # Push the current score onto the stack
@@ -237,14 +237,46 @@ main:
 			syscall
 		j main_loop
 
-update_difficulty:
+update_score_difficulty:
 # Updates the level and difficulty once the score reaches a certian point
 # Update level every 100 points gain 20 everytime screen moves up
+# level = 0($s3), score = 4($s3), speed = 8($s3)
+# $t1 = level, $t2 = score, $t3 = speed
 	# Move return address onto stack
 	move $a0, $ra
 	jal push_stack
 	
+	# Load registers with values
+	lw $t1, 0($s3)
+	lw $t2, 4($s3)
+	lw $t3, 8($s3)
 	
+	# Increase score by 20 and save it back into its position
+	addi $t2, $t2, 20
+	sw $t2, 4($s3)
+	
+	# Updatae level according to score
+	li $t0, 100
+	div $t2, $t0
+	mflo $t1
+	sw $t1, 0($s3)
+	
+	# Update platform length according to level
+	li $t0, 11
+	sub $t0, $t0, $t1
+	move $s2, $t0
+	
+	# Update speed according to level
+	li $t0, 10
+	beq $t3, $t0 update_end
+	li $t0, 8
+	sub $t0, $t0, $t1
+	li $t5, 10
+	mult $t0, $t5
+	mflo $t3
+	sw $t3, 8($s3)
+
+	update_end:
 	# Clean up
 	jal pop_stack
 	jr $v0
@@ -299,16 +331,22 @@ randomize_platform:
 	li $a1, 22
 	li $v0, 42
 	syscall
-	bnez $t1, platform2
-	sw $a0, 0($s6)
-	j randomize_platform_end
+	platform1:
+		bnez $t1, platform2
+		sw $a0, 0($s6)
+		jal update_score_difficulty
+		j randomize_platform_end
+	
 	platform2:
 		bnez $t2, platform3
 		sw $a0, 4($s6)
+		jal update_score_difficulty
 		j randomize_platform_end
+		
 	platform3:
 		bnez $t3, randomize_platform_end
 		sw $a0, 8($s6)
+		jal update_score_difficulty
 	randomize_platform_end:
 	jal pop_stack
 	jr $v0
