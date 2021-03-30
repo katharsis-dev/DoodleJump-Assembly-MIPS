@@ -38,7 +38,6 @@
 # - Green, 32FF00
 # - Pink, FF9AFD
 # 
-# Platform y locations 31, 20, 10
 # Current Platform x locations $s6 (stack pointer)
 # Current Platform y locations $s7 (stack pointer)
 # Player coordinates $t8 = x, $t9 = y
@@ -73,7 +72,6 @@ main:
 	li $a0, 31
 	jal push_stack
 	move $s7, $sp
-	
 	
 	li $t8, 15 # Load initial player coordinate
 	li $t9, 31 # Load initial player coordinate
@@ -136,20 +134,22 @@ main:
 		li $a0, 0
 		jal push_stack
 			jump_loop:
+				
 				# Check if key is pressed
 				jal get_key_once
+				# Load indexes
 				lw $t0, 0($sp) # Load index
 				lw $t1, 4($sp) # Load final index
 				
 				# Move platform down
-				#li $t3, 4
-				#blt $t0, $t3, no_platform_movement
-				#jal move_platform_down
-				#no_platform_movement:
-				
-				beq $t0, $t1 jump_loop_cleanup
-				addi $t0, $t0, 1
-				sw $t0, 0($sp)
+				li $t3, 5
+				li $t4, 14
+				blt $t0, $t3, no_platform_movement
+				bgt $t9, $t4, no_platform_movement
+				jal move_platform_down
+				j no_player_movement
+				no_platform_movement:
+
 				# Paint the current level
 				jal paint_current
 				# Paint new character position
@@ -159,9 +159,26 @@ main:
 				move $a0, $t8 # X coordinate
 				jal push_stack
 				jal paint_character
+				j jump_loop_end
 				
+				no_player_movement:
+					jal paint_current
+					move $a0, $t9 # Y coordinate
+					jal push_stack
+					move $a0, $t8 # X coordinate
+					jal push_stack
+					jal paint_character
+					
+				jump_loop_end:
+				# Increment index /Load indexes from stack
+				lw $t0, 0($sp)
+				lw $t1, 4($sp)
+				
+				beq $t0, $t1 jump_loop_cleanup
+				addi $t0, $t0, 1
+				sw $t0, 0($sp)
 				# Sleep timer
-				li $a0, 60
+				li $a0, 50
 				li $v0, 32
 				syscall
 				j jump_loop
@@ -182,7 +199,7 @@ main:
 			jal paint_character
 			
 			# Sleep timer
-			li $a0, 60
+			li $a0, 50
 			li $v0, 32
 			syscall
 		j main_loop
