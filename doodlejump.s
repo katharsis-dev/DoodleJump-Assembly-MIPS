@@ -32,6 +32,9 @@
 # - $s0, displayAddress (Address)
 # - $s1, checkKey (Address)
 # - $s2, levelLength (int)
+# - $s3, currentLevel (int)
+# - $s6,  Current Platform X locations (stack Pointer)
+# - $s7, Current Platform Y locations (stack Pointer)
 #
 # - Color Codes
 # - Sky Blue, ADE2FF
@@ -57,9 +60,9 @@ main:
 	li $s2, 10 # Load current platform length
 	
 	# Push platform x locations onto stack	
-	li $a0, 10
+	li $a0, 20
 	jal push_stack
-	li $a0, 10
+	li $a0, 5
 	jal push_stack
 	li $a0, 10
 	jal push_stack
@@ -134,40 +137,47 @@ main:
 		li $a0, 0
 		jal push_stack
 			jump_loop:
-				
 				# Check if key is pressed
 				jal get_key_once
+
 				# Load indexes
 				lw $t0, 0($sp) # Load index
 				lw $t1, 4($sp) # Load final index
 				
 				# Move platform down
-				li $t3, 5
+				li $t3, 4 # Move platform down 10 times 
 				li $t4, 14
 				blt $t0, $t3, no_platform_movement
 				bgt $t9, $t4, no_platform_movement
 				jal move_platform_down
 				j no_player_movement
-				no_platform_movement:
-
-				# Paint the current level
-				jal paint_current
-				# Paint new character position
-				addi $t9, $t9, -1
-				move $a0, $t9 # Y coordinate
-				jal push_stack
-				move $a0, $t8 # X coordinate
-				jal push_stack
-				jal paint_character
-				j jump_loop_end
+				no_platform_movement:	
+					# Check if key is pressed
+					jal get_key_once
+					# Paint the current level
+					jal paint_current
+					# Paint new character position
+					addi $t9, $t9, -1
+					move $a0, $t9 # Y coordinate
+					jal push_stack
+					move $a0, $t8 # X coordinate
+					jal push_stack
+					jal paint_character
+					j jump_loop_end
+					# Check if key is pressed
+					jal get_key_once
 				
 				no_player_movement:
+					# Check if key is pressed
+					jal get_key_once
 					jal paint_current
 					move $a0, $t9 # Y coordinate
 					jal push_stack
 					move $a0, $t8 # X coordinate
 					jal push_stack
 					jal paint_character
+					# Check if key is pressed
+					jal get_key_once
 					
 				jump_loop_end:
 				# Increment index /Load indexes from stack
@@ -177,6 +187,8 @@ main:
 				beq $t0, $t1 jump_loop_cleanup
 				addi $t0, $t0, 1
 				sw $t0, 0($sp)
+				# Check if key is pressed
+				jal get_key_once
 				# Sleep timer
 				li $a0, 50
 				li $v0, 32
@@ -188,6 +200,8 @@ main:
 		
 		fall_down:
 		# Move the character down and check for collision
+			# Check if key is pressed
+			jal get_key_once
 			# Paint the current level
 			jal paint_current
 			# Paint new character position
@@ -197,6 +211,9 @@ main:
 			move $a0, $t8 # X coordinate
 			jal push_stack
 			jal paint_character
+			
+			# Check if key is pressed
+			jal get_key_once
 			
 			# Sleep timer
 			li $a0, 50
@@ -436,6 +453,8 @@ get_key_once:
 		addi $t8, $t8, 1
 		j no_key_pressed
 	no_key_pressed:
+
+		
 		jal pop_stack
 		jr $v0
 	
