@@ -32,17 +32,25 @@
 # - $s0, displayAddress (Address)
 # - $s1, checkKey (Address)
 # - $s2, levelLength (int)
-# - $s3, currentLevel (int)
-# - $s6,  Current Platform X locations (stack Pointer)
+# - $s3, current Level (int), current score (int), level speed (int)
+# - $s6,  Current Platform X locations (stack Pointer) 
 # - $s7, Current Platform Y locations (stack Pointer)
-#
+# - $t7, Player coodinate X
+# - $t8 Player coordinate Y
 # - Color Codes
 # - Sky Blue, ADE2FF
 # - Green, 32FF00
 # - Pink, FF9AFD
 # 
 # Current Platform x locations $s6 (stack pointer)
+# plat1 = 0($s6), plat2 = 4($s6), plat3 = 8($s6)
+#
 # Current Platform y locations $s7 (stack pointer)
+# plat1 = 0($s7), plat2 = 4($s7), plat3 = 8($s7)
+#
+# Level / Score / Speed
+# level = 0($s3), score = 4($s3), speed = 8($s3)
+#
 # Player coordinates $t8 = x, $t9 = y
 
 .data
@@ -58,6 +66,15 @@ main:
 	lw $s0, displayAddress	# Load display address into register $t0
 	lw $s1, checkKey # Load checkkey address
 	li $s2, 10 # Load current platform length
+	
+	# Push intial level settings onto the stack
+	li $a0, 65
+	jal push_stack # Push the current speed onto the stack
+	li $a0, 0
+	jal push_stack # Push the current score onto the stack
+	li $a0, 1
+	jal push_stack # Push the current level onto the stack
+	move $s3, $sp
 	
 	# Push platform x locations onto stack	
 	li $a0, 20
@@ -145,9 +162,7 @@ main:
 				lw $t1, 4($sp) # Load final index
 				
 				# Move platform down
-				li $t3, 4 # Move platform down 10 times 
-				li $t4, 14
-				blt $t0, $t3, no_platform_movement
+				li $t4, 15 # Decides how many times to move platform down when character is above certai y index
 				bgt $t9, $t4, no_platform_movement
 				jal move_platform_down
 				j no_player_movement
@@ -163,9 +178,10 @@ main:
 					move $a0, $t8 # X coordinate
 					jal push_stack
 					jal paint_character
-					j jump_loop_end
 					# Check if key is pressed
 					jal get_key_once
+					# Jump to end of loop
+					j jump_loop_end
 				
 				no_player_movement:
 					# Check if key is pressed
@@ -190,7 +206,7 @@ main:
 				# Check if key is pressed
 				jal get_key_once
 				# Sleep timer
-				li $a0, 50
+				lw $a0, 8($s3)
 				li $v0, 32
 				syscall
 				j jump_loop
@@ -216,11 +232,22 @@ main:
 			jal get_key_once
 			
 			# Sleep timer
-			li $a0, 50
+			lw $a0, 8($s3)
 			li $v0, 32
 			syscall
 		j main_loop
 
+update_difficulty:
+# Updates the level and difficulty once the score reaches a certian point
+# Update level every 100 points gain 20 everytime screen moves up
+	# Move return address onto stack
+	move $a0, $ra
+	jal push_stack
+	
+	
+	# Clean up
+	jal pop_stack
+	jr $v0
 
 move_platform_down:
 # Moves all the platforms down to make it seem like character is going up
@@ -250,11 +277,41 @@ move_platform_down:
 	sw $t1, 0($s7)
 	sw $t2, 4($s7)
 	sw $t3, 8($s7)
+	# Check if any platforms need to be randomized
+	jal randomize_platform
 	# Clean up
 	jal pop_stack
 	jr $v0
 
-
+randomize_platform:
+# Checks all the platforms if one of them is == 0 then randomize its x value
+	# Push return address onto the stack
+	move $a0, $ra
+	jal push_stack
+	
+	# Load y index of platforms
+	lw $t1, 0($s7)
+	lw $t2, 4($s7)
+	lw $t3, 8($s7)
+	
+	# Load random value range
+	li $a0, 0
+	li $a1, 22
+	li $v0, 42
+	syscall
+	bnez $t1, platform2
+	sw $a0, 0($s6)
+	j randomize_platform_end
+	platform2:
+		bnez $t2, platform3
+		sw $a0, 4($s6)
+		j randomize_platform_end
+	platform3:
+		bnez $t3, randomize_platform_end
+		sw $a0, 8($s6)
+	randomize_platform_end:
+	jal pop_stack
+	jr $v0
 
 check_lose:
 # Checks if the player has lost
@@ -341,8 +398,6 @@ check_collision:
 	move $ra, $fp
 	move $v0, $v1
 	jr $ra
-		
-	
 
 
 paint_platform:
