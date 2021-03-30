@@ -453,8 +453,6 @@ get_key_once:
 		addi $t8, $t8, 1
 		j no_key_pressed
 	no_key_pressed:
-
-		
 		jal pop_stack
 		jr $v0
 	
