@@ -19,7 +19,7 @@
 #
 # Which approved additional features have been implemented?
 # (See the assignment handout for the list of additional features)
-# 1. Player names. Allow the player to enter their name using the keyboard, and the name is displayed throughout the game as well as the game-over screen showing the final scores.
+# 1. Background music: add background music to the game.
 # 2. Display the score on screen. The score should be constantly updated as the game progresses. The final score is displayed on the game-over screen.
 # 3. Changing difficulty as game progresses: gradually increase the difficulty of the game (e.g., shrinking the platforms) as the game progresses.
 # ... (add more if necessary)
@@ -52,12 +52,16 @@
 # level = 0($s3), score = 4($s3), speed = 8($s3)
 #
 # Player coordinates $t8 = x, $t9 = y
+#
+# TODO LIST:
+# Try and make the code more efficient if possible
+# Fix randomizing so it gets the edge when platform shrinks
+# 
 
 .data
 	displayAddress:	.word	0x10008000
 	keydisplayAddress: .word 0xffff000c
 	checkKey: .word 0xffff0000
-	keyStroke: .word 0xffff0004
 
 .globl main
 
@@ -238,10 +242,17 @@ main:
 			li $v0, 32
 			syscall
 		j main_loop	
+paint_current_fast:
+# Repaints the backgorund fast only replacing what is needed
+	# Move return address onto stack
+	move $a0, $ra
+	jal push_stack
+	
+	
 
 update_score_difficulty:
 # Updates the level and difficulty once the score reaches a certian point
-# Update level every 100 points gain 20 everytime screen moves up
+# Update level every 10 points gain 1 everytime screen moves up
 # level = 0($s3), score = 4($s3), speed = 8($s3)
 # $t1 = level, $t2 = score, $t3 = speed
 	# Move return address onto stack
@@ -253,12 +264,12 @@ update_score_difficulty:
 	lw $t2, 4($s3)
 	lw $t3, 8($s3)
 	
-	# Increase score by 20 and save it back into its position
-	addi $t2, $t2, 20
+	# Increase score by 1 and save it back into its position
+	addi $t2, $t2, 1
 	sw $t2, 4($s3)
 	
 	# Updatae level according to score
-	li $t0, 100
+	li $t0, 10
 	div $t2, $t0
 	mflo $t1
 	beqz $t1 add_one
@@ -398,7 +409,6 @@ paint_current:
 	jal paint_platform
 	
 	# Paint level number
-	# Print 1 on the screen
 	lw $a0, 0($s3)
 	jal push_stack
 	li $a0, 27
@@ -406,6 +416,9 @@ paint_current:
 	li $a0, 0
 	jal push_stack
 	jal print_number
+	
+	# Paint score onto the screen
+	jal print_score
 	
 	# Clean up
 	jal pop_stack
@@ -735,6 +748,46 @@ paint_character:
 	jal pop_stack
 	move $ra, $fp
 	jr $ra
+	
+print_score:
+# Prints the score on the bottom right of the screen
+# First coordinate (23, 0), (28, 0)
+	# Move return address onto the stack
+	move $a0, $ra
+	jal push_stack
+	
+	# Load score into resgister
+	lw $t0, 4($s3)
+	
+
+	li $t1, 10
+	div $t0, $t1
+	mfhi $t2
+	mflo $t0
+	div $t0, $t1
+	mfhi $t3
+	# Print the first number
+	move $a0, $t2
+	jal push_stack
+	li $a0, 0
+	jal push_stack
+	li $a0, 28
+	jal push_stack
+	# Print second number
+	move $a0, $t3
+	jal push_stack
+	li $a0, 0
+	jal push_stack
+	li $a0, 23
+	jal push_stack
+	
+	jal print_number
+	jal print_number
+	
+	# Clean up
+	jal pop_stack
+	jr $v0
+	
 	
 print_number:
 # Prints a number on the screen given coordinate and number
@@ -2115,7 +2168,7 @@ print_number:
 		li $t5, 0xFFFFFF
 		move $a0, $t5 # Load colour
 		jal push_stack
-		addi $a0, $t2, 3 # Load Y coordinate
+		addi $a0, $t2, 4 # Load Y coordinate
 		jal push_stack
 		addi $a0, $t1, 3 # Load X coordinate
 		jal push_stack
