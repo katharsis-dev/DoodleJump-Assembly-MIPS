@@ -139,6 +139,7 @@ main:
 		jal check_lose
 		# Check if key is pressed
 		jal get_key_once
+		
 		# Check collision
 		move $a0, $t9 # Y coordinate
 		jal push_stack
@@ -418,15 +419,20 @@ check_collision:
 	
 	add $t4, $t0, $t1 # displayAddress offset to check
 	add $t5, $t5, $t4 # displayAddress to change
+	addi $t5, $t5, -4
 	
-	lw $t6, 0($t5)
-	li $t7, 0x32FF00
+	lw $t1, 0($t5)
+	lw $t2, 4($t5)
+	lw $t3, 8($t5)
+	li $t4, 0x32FF00
 	check_collision_if:
-		bne $t6, $t7, check_collision_else
-		li $v1, 1
+		beq $t1, $t4, check_collision_else
+		beq $t2, $t4, check_collision_else
+		beq $t3, $t4, check_collision_else
+		li $v1, 0
 		j check_collision_end
 	check_collision_else:
-		li $v1, 0
+		li $v1, 1
 	check_collision_end:
 	# Clean up
 	jal pop_stack
