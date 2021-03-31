@@ -149,7 +149,7 @@ main:
 
 		jump_up:
 		# Moves the character up 14 pixels
-		li $a0, 14 # How many pixels to jump up by
+		li $a0, 15 # How many pixels to jump up by
 		jal push_stack
 		li $a0, 0
 		jal push_stack
@@ -162,7 +162,7 @@ main:
 				lw $t1, 4($sp) # Load final index
 				
 				# Move platform down
-				li $t4, 15 # Decides how many times to move platform down when character is above certai y index
+				li $t4, 14 # Decides how many times to move platform down when character is above certai y index
 				bgt $t9, $t4, no_platform_movement
 				jal move_platform_down
 				j no_player_movement
