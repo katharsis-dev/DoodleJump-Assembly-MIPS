@@ -15,17 +15,19 @@
 #
 # Which milestone is reached in this submission?
 # (See the assignment handout for descriptions of the milestones)
-# - Milestone 1/2/3/4/5 (choose the one the applies)
+# - Milestone 5 Reached!
 #
 # Which approved additional features have been implemented?
 # (See the assignment handout for the list of additional features)
-# 1. Background music: add background music to the game.
-# 2. Display the score on screen. The score should be constantly updated as the game progresses. The final score is displayed on the game-over screen.
-# 3. Changing difficulty as game progresses: gradually increase the difficulty of the game (e.g., shrinking the platforms) as the game progresses.
-# ... (add more if necessary)
+# 1. Display the score on screen. The score should be constantly updated as the game progresses. The final score is displayed on the game-over screen.
+# 2. Changing difficulty as game progresses: gradually increase the difficulty of the game (e.g., shrinking the platforms) as the game progresses.
+# 3. You can decide what you want to do - for Rahim <3
+#
 #
 # Any additional information that the TA needs to know:
-# - (write here, if any)
+# - Current level is displayed at the bottom left
+# - Current score is displayed at the top right (Note first three platforms don't count since its practice)
+# - Highest level is 7 :)
 #
 #####################################################################
 # - Constant Register
@@ -53,10 +55,6 @@
 #
 # Player coordinates $t8 = x, $t9 = y
 #
-# TODO LIST:
-# Try and make the code more efficient if possible
-# Fix randomizing so it gets the edge when platform shrinks
-# 
 
 .data
 	displayAddress:	.word	0x10008000
@@ -137,8 +135,7 @@ main:
 	move $a0, $v0
 	li $v0, 1 
 	syscall
-	
-	
+
 	main_loop:
 		# Check if player has lost
 		jal check_lose
@@ -192,6 +189,7 @@ main:
 				no_player_movement:
 					# Check if key is pressed
 					jal get_key_once
+					# Paint current
 					jal paint_current
 					move $a0, $t9 # Y coordinate
 					jal push_stack
@@ -226,6 +224,7 @@ main:
 			jal get_key_once
 			# Paint the current level
 			jal paint_current
+			
 			# Paint new character position
 			addi $t9, $t9, 1
 			move $a0, $t9 # Y coordinate
@@ -242,13 +241,121 @@ main:
 			li $v0, 32
 			syscall
 		j main_loop	
-paint_current_fast:
-# Repaints the backgorund fast only replacing what is needed
-	# Move return address onto stack
+		
+display_final_score:
+# Paint the final score onto the screen and a message
+	
+	# Push return address onto stack
 	move $a0, $ra
 	jal push_stack
 	
+	# Paint the background
+	jal paint_background
 	
+	# Print S
+	li $a0, 123
+	jal push_stack
+	li $a0, 10
+	jal push_stack
+	li $a0, 4
+	jal push_stack
+	jal print_number
+	# Print C
+	li $a0, 103
+	jal push_stack
+	li $a0, 10
+	jal push_stack
+	li $a0, 9
+	jal push_stack
+	jal print_number
+	# Print O
+	li $a0, 117
+	jal push_stack
+	li $a0, 10
+	jal push_stack
+	li $a0, 14
+	jal push_stack
+	jal print_number
+	# Print R
+	li $a0, 122
+	jal push_stack
+	li $a0, 10
+	jal push_stack
+	li $a0, 19
+	jal push_stack
+	jal print_number
+	# Print E
+	li $a0, 105
+	jal push_stack
+	li $a0, 10
+	jal push_stack
+	li $a0, 24
+	jal push_stack
+	jal print_number
+	
+	# Print sore
+	li $a0, 17
+	jal push_stack
+	li $a0, 11
+	jal push_stack
+	jal print_score
+	
+	# Clean up
+	jal pop_stack
+	jr $v0
+	
+paint_row:
+# Paint a platform given coordinate and length
+# $t0 = x, $t1 = y, $t2 = length $t3 = colour
+
+	# Push return address onto stack
+	move $a0, $ra
+	jal push_stack
+	
+	# Load arguements from stack
+	lw $t0, 4($sp)
+	lw $t1, 8($sp)
+	lw $t2, 12($sp)
+	lw $t3, 16($sp)
+
+	li $t4, 0 # Index for Loop
+	
+	paint_row_loop:
+		beq $t4, $t2 paint_row_end # Loop end condition
+		
+		move $a0, $t4 # Push loop index onto stack
+		jal push_stack
+	
+		# Push paint_coord arugements onto stack
+		move $a0, $t3
+		jal push_stack
+		move $a0, $t1
+		jal push_stack
+		add $a0, $t0, $t4
+		jal push_stack
+		jal paint_coord
+		
+		jal pop_stack # Pop loop index off the stack
+		move $t4, $v0
+		
+		lw $t0, 4($sp)
+		lw $t1, 8($sp)
+		lw $t2, 12($sp)
+		lw $t3, 16($sp)
+		addi $t4, $t4 1
+	
+		j paint_row_loop
+
+	paint_row_end:
+	# Final Clean up
+	jal pop_stack
+	move $fp, $v0
+	jal pop_stack
+	jal pop_stack
+	jal pop_stack
+	jal pop_stack
+	move $ra, $fp
+	jr $ra
 
 update_score_difficulty:
 # Updates the level and difficulty once the score reaches a certian point
@@ -347,7 +454,7 @@ randomize_platform:
 	
 	# Load random value range
 	li $a0, 0
-	li $a1, 22
+	li $a1, 31
 	li $v0, 42
 	syscall
 	platform1:
@@ -376,6 +483,7 @@ check_lose:
 	bge $t9, $t0, lost
 	j not_lost
 	lost:
+		jal display_final_score
 		li $v0, 10
 		syscall
 	not_lost:
@@ -418,13 +526,16 @@ paint_current:
 	jal print_number
 	
 	# Paint score onto the screen
+	li $a0, 0
+	jal push_stack
+	li $a0, 23
+	jal push_stack
 	jal print_score
 	
 	# Clean up
 	jal pop_stack
 	jr $v0
 	
-
 check_collision:
 # Checks if character is in collision with any platforms
 # $t0 = x, $t1 = y
@@ -472,7 +583,6 @@ check_collision:
 	move $ra, $fp
 	move $v0, $v1
 	jr $ra
-
 
 paint_platform:
 # Paint a platform given coordinate and length
@@ -758,6 +868,9 @@ print_score:
 	
 	# Load score into resgister
 	lw $t0, 4($s3)
+	# Load arguements into register
+	lw $t4, 4($sp)
+	lw $t5, 8($sp)
 	
 
 	li $t1, 10
@@ -769,16 +882,20 @@ print_score:
 	# Print the first number
 	move $a0, $t2
 	jal push_stack
-	li $a0, 0
+	#li $a0, 0
+	move $a0, $t5
 	jal push_stack
-	li $a0, 28
+	#li $a0, 28
+	addi $a0, $t4, 5
 	jal push_stack
 	# Print second number
 	move $a0, $t3
 	jal push_stack
-	li $a0, 0
+	#li $a0, 0
+	move $a0, $t5
 	jal push_stack
-	li $a0, 23
+	#li $a0, 23
+	move $a0, $t4
 	jal push_stack
 	
 	jal print_number
@@ -786,7 +903,11 @@ print_score:
 	
 	# Clean up
 	jal pop_stack
-	jr $v0
+	move $fp, $v0
+	jal pop_stack
+	jal pop_stack
+	
+	jr $fp
 	
 	
 print_number:
@@ -838,6 +959,21 @@ print_number:
 	# Check if qual to 9
 	li $t4, 9
 	beq $t3, $t4 print_9
+	# Check if qual to S
+	li $t4, 123
+	beq $t3, $t4 print_S
+	# Check if qual to C
+	li $t4, 103
+	beq $t3, $t4 print_C
+	# Check if qual to O
+	li $t4, 117
+	beq $t3, $t4 print_0
+	# Check if qual to R
+	li $t4, 122
+	beq $t3, $t4 print_R
+	# Check if qual to E
+	li $t4, 105
+	beq $t3, $t4 print_E
 	
 	print_0:
 		# Paint top 1
@@ -2160,6 +2296,602 @@ print_number:
 		addi $a0, $t2, 3 # Load Y coordinate
 		jal push_stack
 		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		j print_end
+	print_S:
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 1 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 1 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 1 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 3 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 1 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		
+		j print_end
+		
+	print_C:
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 1 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 1 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 3 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 1 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		
+		j print_end
+	print_R:
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 1 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 1 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 1 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 1 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 3 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 3 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		
+		j print_end
+		
+	print_E:
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 1 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 0 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 1 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 1 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 2 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 3 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 3 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 0 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 1 # Load X coordinate
+		jal push_stack
+		jal paint_coord
+		# Paint Top 
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		li $t5, 0xFFFFFF
+		move $a0, $t5 # Load colour
+		jal push_stack
+		addi $a0, $t2, 4 # Load Y coordinate
+		jal push_stack
+		addi $a0, $t1, 2 # Load X coordinate
 		jal push_stack
 		jal paint_coord
 		# Paint Top 
