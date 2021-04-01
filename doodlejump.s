@@ -29,6 +29,8 @@
 # - Current level is displayed at the bottom left
 # - Current score is displayed at the top right (Note first three platforms don't count since its practice)
 # - Highest level is 7 :)
+# - Enjoy the game with some top quality background music
+# - Special sound effects for jumping and game end screen. 
 #
 #####################################################################
 # - Constant Register
@@ -166,6 +168,17 @@ main:
 		beqz $v0 fall_down
 
 		jump_up:
+		
+		
+		# add jump sound
+	li $v0, 31
+	li $a0, 73
+	li $a1, 1000
+	li $a2, 127
+	li $a3, 170
+			
+	syscall
+		
 		# Moves the character up 14 pixels
 		li $a0, 15 # How many pixels to jump up by
 		jal push_stack
@@ -314,6 +327,30 @@ display_final_score:
 	li $a0, 11
 	jal push_stack
 	jal print_score
+	
+	# add end sound
+	li $v0, 31
+	li $a0, 73
+	li $a1, 1300
+	li $a2, 2
+	li $a3, 170
+	syscall
+
+	li $v0, 31
+	li $a0, 72
+	syscall
+	
+	li $v0, 31
+	li $a0, 71
+	syscall
+	
+	li $v0, 31
+	li $a0, 70
+	syscall
+	
+	li $v0, 31
+	li $a0, 69
+	syscall
 	
 	# Clean up
 	jal pop_stack
@@ -788,7 +825,7 @@ paint_character:
 		
 		li $a1, 1000
 		li $a2, 45
-		li $a3, 150
+		li $a3, 100
 		
 	syscall
 
@@ -2956,9 +2993,15 @@ print_number:
 		j print_end
 	
 	print_end:
+	
+
+				
 	jal pop_stack
 	move $fp, $v0
 	jal pop_stack
 	jal pop_stack
 	jal pop_stack
+	
+	
+	
 	jr $fp
