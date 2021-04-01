@@ -5,6 +5,7 @@
 #
 # Group members:
 # - Student 1: Brytton Tsai, 1005727858
+# - Student 2: Rahim Somjee. 1006239740
 #
 # Bitmap Display Configuration:
 # - Unit width in pixels: 8					     
@@ -60,6 +61,10 @@
 	displayAddress:	.word	0x10008000
 	keydisplayAddress: .word 0xffff000c
 	checkKey: .word 0xffff0000
+	n1: .byte 61
+	n2: .byte 71
+	n3: .byte 66
+	inc: .word 0
 
 .globl main
 
@@ -136,7 +141,17 @@ main:
 	li $v0, 1 
 	syscall
 
+
+	
+	
+
+
 	main_loop:
+	
+	
+	
+	
+	
 		# Check if player has lost
 		jal check_lose
 		# Check if key is pressed
@@ -744,6 +759,39 @@ pop_stack:
 paint_character:
 # Paint the character given coordinate
 # $t0 = x, $t1 = y
+	
+	# add music
+	li $v0, 31
+	lw $t0, inc
+	addi $t1, $zero, 1
+	
+	if:
+		beq $t0, $zero, first
+		beq $t0, $t1, second
+		j third
+	
+	first:
+		lbu $a0, n1
+		addi $t0, $t0, 1
+		sw $t0, inc
+		j fourth
+	
+	second: 
+		lbu $a0, n2
+		addi $t0, $t0, 1
+		sw $t0, inc
+		j fourth
+	third: 
+		lbu $a0, n3
+		sw $zero, inc
+	fourth:
+		
+		li $a1, 1000
+		li $a2, 45
+		li $a3, 150
+		
+	syscall
+
 
 	# Push return address onto stack
 	move $a0, $ra
