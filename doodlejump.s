@@ -22,7 +22,7 @@
 # (See the assignment handout for the list of additional features)
 # 1. Display the score on screen. The score should be constantly updated as the game progresses. The final score is displayed on the game-over screen.
 # 2. Changing difficulty as game progresses: gradually increase the difficulty of the game (e.g., shrinking the platforms) as the game progresses.
-# 3. You can decide what you want to do - for Rahim <3
+# 3. Background music: add background music to the game.
 #
 #
 # Any additional information that the TA needs to know:
@@ -33,11 +33,12 @@
 # - Special sound effects for jumping and game end screen. 
 #
 #####################################################################
-# - Constant Register
+# - Constant Registers
 # - $s0, displayAddress (Address)
 # - $s1, checkKey (Address)
 # - $s2, levelLength (int)
 # - $s3, current Level (int), current score (int), level speed (int)
+# - $s4, Frames per second
 # - $s6,  Current Platform X locations (stack Pointer) 
 # - $s7, Current Platform Y locations (stack Pointer)
 # - $t7, Player coodinate X
@@ -75,6 +76,7 @@ main:
 	lw $s0, displayAddress	# Load display address into register $t0
 	lw $s1, checkKey # Load checkkey address
 	li $s2, 10 # Load current platform length
+	li $s4, -1 # Current frames
 	
 	# Push intial level settings onto the stack
 	li $a0, 70
@@ -143,16 +145,7 @@ main:
 	li $v0, 1 
 	syscall
 
-
-	
-	
-
-
 	main_loop:
-	
-	
-	
-	
 	
 		# Check if player has lost
 		jal check_lose
@@ -797,11 +790,17 @@ paint_character:
 # Paint the character given coordinate
 # $t0 = x, $t1 = y
 	
+	# Check if frames is 0
+	addi $s4, $s4, 1
+	li $t0, 10
+	div $s4, $t0
+	mfhi $s4
+	bnez $s4 no_music
 	# add music
+	play_music:
 	li $v0, 31
 	lw $t0, inc
 	addi $t1, $zero, 1
-	
 	if:
 		beq $t0, $zero, first
 		beq $t0, $t1, second
@@ -822,14 +821,13 @@ paint_character:
 		lbu $a0, n3
 		sw $zero, inc
 	fourth:
-		
-		li $a1, 1000
-		li $a2, 45
-		li $a3, 100
-		
+		li $a1, 1650
+		li $a2, 96 # 48
+		li $a3, 50
 	syscall
-
-
+	
+	no_music:
+	
 	# Push return address onto stack
 	move $a0, $ra
 	jal push_stack
@@ -942,7 +940,13 @@ paint_character:
 	jal pop_stack
 	jal pop_stack
 	move $ra, $fp
+	
+	
+	
+	
 	jr $ra
+	
+	
 	
 print_score:
 # Prints the score on the bottom right of the screen
